@@ -12,6 +12,24 @@ output:
     code_folding: show
 ---
 
+## 1 Ask a manager: Data on annual salary from a survey
+
+## 1.1 Introduction
+The following project focuses on the analysis of a dataset on annual salaries. As part of the analysis we will first perform Exploratory Data Analysis (EDA) to better understand the parameters before we will explore the data further using Data visualization, Hypothesis testing and Regression Analysis. The aim is to explain the patterns and differences in different annual salaries.
+
+## 1.2 Executive Summary
+
+The dataset obtained from the survey  contained a large number of respondents that were predominantly white females with high education levels.
+
+Due to the limited observations for countries other that the US we decided to focus our entire analysis only on US-Salary (respondents from the US). In addition, we eliminated some of the columns that were not directly related with annual salary and/or contained too many individual answers (i.e. job title) unable to conclude something from them. After building a clean and workable dataset, the exploratory data analysis was performed and visualized to get a better understanding of the survey respondents and the data in general. We observed that:
+- XXX hypothesis 1
+- XXX Hypothesis 2
+- XXX Hypothesis 3
+- Hypothesis 4
+- Regression Model
+
+Thereafter, we built a regression model through iteration and using a test train model. The final model includes the independent variables: X, Y, Z which has a R-squared value of XXX. The final regression model is used to XXXX
+
 ```{r, setup, echo=FALSE}
 knitr::opts_chunk$set(
   message = FALSE, 
@@ -48,23 +66,22 @@ library(infer)
 library(openintro)
 ```
 
+## 2 Exploratory Data Analysis
 
+## 2.1 Data Cleaning
 ```{r load_data}
 
 #read local copy
 ask_a_manager_2021 <- read_csv(here::here("data", "ask_a_manager_2021.csv")) %>% 
   janitor::clean_names()
   
-#skim the data
+#skim data to get initial understanding of dataset such as datatypes, missing values etc. 
 skimr::skim(ask_a_manager_2021)
 ```
-
-
-## DATA CLEANING
+> The dataset contains a lot of different responses and datatypes. Further, tere are also various NA values that we will need to clean from the data in a next step. Below we will clean the data in a first step.
 
 ```{r, data_cleaning}
 #data cleaning
-
 
 ask_a_manager_2021_new <- ask_a_manager_2021 %>% 
   #rename long columns
@@ -130,9 +147,13 @@ ask_a_manager_2021_new<-ask_a_manager_2021_new %>%
 
 ```
 
+> After a first cleaning we skim the new dataset again.
+
 ```{r}
 skim(ask_a_manager_2021_new)
 ```
+
+> To get a more comprehensiv picture we will only focus on respondents with a salary between 10'000 and 1'000'000 USD.
 
 ```{r cleaned_data}
 #drop_na
@@ -146,6 +167,11 @@ ask_a_manager_2021_cleaned<-
 
 skim(ask_a_manager_2021_cleaned)
 ```
+
+## 2.2 Further Data Exploration
+
+> To get a sense of the survey respondents the following graphs explore the respondents origin, their gender, race etc.
+
 ```{r, countries with the most respondents }
 #we will filter for countries with the most respondents
 ask_a_manager_2021_cleaned %>% 
@@ -164,6 +190,8 @@ ask_a_manager_2021_cleaned %>%
 # use countrycode::countryname() to clean country names
 ```
 
+> As the vast majority of the respondents in this survey is from the USA, the further data analysis will only focus on the US annual salary data. 
+
 ```{r, include only us data}
 #delete country and rename country value as iso3, filter USA
 us_data <-
@@ -178,8 +206,9 @@ us_data <- us_data %>%
   drop_na()
 ```
 
+# 2.2.1 Analysis on US-Salary
 
-## EXPLORATORY DATA ANALYSIS
+> In the following exploratory data analysis is conducted on the different variables to thereafter continue with hypothesis testing and regression models.
 
 ```{r, salary distribution}
 
@@ -224,7 +253,7 @@ ggplot(us_data, aes(x=log(annual_salary)))+
 # Which one (salary vs. log(salary)) is better to use in a regression model? Why?
 #log salary appears to b more evenly distributed.
 ```
-
+> COMMENTING ON ABOVE GRAPH!!!!!!!!!!
 
 
 ```{r, age distribution }
@@ -243,10 +272,10 @@ us_data %>%
 
 
 ```
-
+> Vast majority of survey respondents are between 25-44 indicating that the mean salary is probably higher than the mean salary of the entire US population.
 
 ```{r, most observed industries }
-# More than 1000 industries can be observed in our dtaframe
+# More than 1000 industries can be observed in our dataframe
 #we will filter for industries with more than 500 respondents
 
 us_data %>% 
@@ -264,7 +293,7 @@ us_data %>%
   guides(fill=FALSE)
 ```
 
-
+> Interestingly Nonprofits are the second most frequent industry of the survey, an industry usually less mentioned.
 
 ```{r, city barchart }
 # 'city' 
@@ -283,7 +312,7 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
   NULL
 ```
-
+> The cities most often mentioned are all large cities in the USA. Geographically, however, they are spread across the entire country.
 
 ```{r, education level bar chart }
 # education
@@ -303,7 +332,7 @@ us_data %>%
 
 ```
 
-
+> The survey also display a very high education level in general.
 
 ```{r, race variable manipulation}
 
@@ -339,6 +368,7 @@ us_data %>%
 
 ```
 
+> The vast majority of the dataset is white. 
 
 ```{r, barchart for proffesional experience years }
 
@@ -355,7 +385,7 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
 ```
-
+> The survey asked mostly fairly experienced people.
 
 ```{r, barchart for years of professional experience in particular field }
 # years_of_experience_in_field  
@@ -369,7 +399,6 @@ us_data %>%
   theme_bw()+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
-
 ```
 
 
@@ -387,6 +416,9 @@ us_data %>%
        y="Count")+
   NULL
 ```
+
+> Vast majority of respondents are women. This might explain the high count of people working in nonprofits.
+
 ```{r,compare salaries for each gender}
 
 #create table
@@ -405,6 +437,11 @@ us_data %>%
   theme_bw()
 ```
 
+> Men and interestingly "don't know or NA" have the highest annual salary.
+
+# 2.2.2 Hypothesis testing
+
+# 
 
 ```{r, facet wrap for women and men}
 
@@ -799,7 +836,7 @@ us_data %>%
   )
 ```
 
-```{r, salary_by_field_exp}
+```{r, salary_by_field_experience}
 #Count of people and average salary by education
 us_data %>%
   group_by(education_level) %>% 
