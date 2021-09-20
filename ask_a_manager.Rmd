@@ -768,7 +768,6 @@ us_data %>%
 
 
 ```{r, education vs salary}
-
 us_data %>%
   ggplot(aes(x = education_level, y = annual_salary,fill=education_level)) +
   geom_violin() +
@@ -782,19 +781,85 @@ us_data %>%
   theme_bw()+
   guides(fill=FALSE)+
   NULL
-
 ```
-
 
 
 
 ## REGRESSION MODELING
 
-Since almost all the explanatory variables are categorical, we try merging some of the categories of categorical variables, based on the count of people and mean salary in each category.
+We train a regression model to predict annual salary for respondents in US only. We take a look at the annual salary and the log of annual salary to decide our dependent variable (Y) - 
 
-#HOW DID WE PICK FIELD EXP OUT OF AGE, FIELD EXPERIENCE AND OVERALL EXPERIENCE!
+```{r, distribution_of_salary_and_log_salary, fig.with = 12, fig.height=4}
+library(patchwork) #Package to display plots side-by-side
 
-On running individual models, field_experience is giving highest R^squared. Intuitively, makes sense.
+#Histogram for annual salary
+annual_salary_plot <- us_data %>% 
+  ggplot(aes(x = annual_salary)) +
+  geom_histogram() +
+  theme_bw() +
+  labs(
+    title = "Histogram of annual salary",
+    y = "Count",
+    x = "Annual Salary"
+  )
+
+#Histogram for log of annual salary
+log_salary_plot <- us_data %>% 
+  ggplot(aes(x = log_salary)) +
+  geom_histogram() +
+  theme_bw() +
+  labs(
+    title = "Histogram of log of annual salary",
+    y = "Count",
+    x = "Log of Annual Salary"
+  )
+
+#Displaying the plots together
+annual_salary_plot + log_salary_plot
+```
+
+
+We observe that log of annual salary resembles the normal distribution more closely than annual salary and has lesser outliers. Hence, we proceed with the log of annual salary as the dependent variable.
+
+
+```{r, glimpse_us_data}
+#Quick look at the data
+glimpse(us_data)
+```
+
+Taking a look at the explanatory variables for the model, we believe that age, overall_experience and field_experience would be highly correlated. Hence, we run 3 very simple models with each of these as explanatory variables to analyze which of these does the best job of explaining the variability in log of annual salary.
+
+Here are the 3 models to compare age, overall_experience and field_experience -
+
+```{r, age}
+#Linear regression model 
+model_age <- lm(log_salary ~ age, data = us_data)
+
+#Summary of the model
+mosaic::msummary(model_age)
+```
+
+```{r, overall_experience}
+#Linear regression model 
+model_exp <- lm(log_salary ~ overall_experience, data = us_data)
+
+#Summary of the model
+mosaic::msummary(model_exp)
+```
+
+```{r, field_experience}
+#Linear regression model 
+model_field_exp <- lm(log_salary ~ field_experience, data = us_data)
+
+#Summary of the model
+mosaic::msummary(model_field_exp)
+```
+
+We observe that all 3 models are significant at 95% confidence level as the p-value is less than 0.05. Since the R^squared for separate models with age, overall_experience and field_experience are 5%, 6% and 11% respectively, we conclude that field_experience does the best job of explaining variability in annual salary. It also makes intuitive sense that the number of years an employee has worked in a field would be the best predictor of her salary. Hence, out of these 3 variables, we pick field_experience as our explanatory variable.
+
+Based on the exploratory data analysis above, we observe a clear relationship between annual salary and field experience, race, gender, education level, industry and state. We will analyze the possibility of including these variables in our model. Now, since we observe that all these explanatory variables are categorical, we try merging some of the categories of these variables, based on the count of people and mean salary in each category.
+
+We observe the count and mean salaries of people in each category of field_experience.
 
 
 ```{r, salary_by_field_exp}
@@ -810,6 +875,9 @@ us_data %>%
     mean_salary = mean(annual_salary)
   )
 ```
+
+
+We observe that "31-40 years" and 41 years or more" have very low number of respondents, as compared to other categories. Hence, we merge this category with "21-30" years and create a combined category of "21 years or more". Similarly, we combine "less than 1 year" and "2-4 years" categories into "less than 4 years".
 
 
 ```{r, manipulating_field_exp}
@@ -836,7 +904,12 @@ us_data %>%
   )
 ```
 
-```{r, salary_by_field_experience}
+If we look at the distribution of field_exp_grouped now, we see that the count of people is more uniform as compared to before.
+
+We combine other categories based on the same logic -
+
+
+```{r, salary_by_education_level}
 #Count of people and average salary by education
 us_data %>%
   group_by(education_level) %>% 
@@ -850,6 +923,8 @@ us_data %>%
   )
 ```
 
+
+We observe that High School has a low count and the mean salary for High School and Some college education level are close. Hence, we merge these 2 categories into 1. Although we have low count in PhD as well, we do not have a category which has a mean close to that of PhD. Hence, we keep that as a separate category.
 
 ```{r, manipulating_education_level}
 #Based on count of people and mean salary in each category, merging categories
@@ -874,6 +949,8 @@ us_data %>%
 
 ```
 
+The distribution by education level looks more uniform after merging some of the categories. Now, we look at annual salary by industry. Since there are a lot of industries, we consider only those in which the number of respondents are at least 500. For the other industries, we will merge them into a single category called "Others".
+
 
 ```{r, salary_by_industry}
 industry_list <- us_data %>%
@@ -892,8 +969,29 @@ industry_list <- industry_list %>%
   filter(count > 500) %>% 
   select(industry) %>% 
   pull()
-```
 
+industry_list
+```
+Since there are two industries for education, we check the annual salary be those 2 industries to check if the mean salaries are close enough to be merged.
+
+
+```{r, education_industry}
+us_data %>%
+  
+  #Filtering for education industries
+  filter(industry %in% c("Education (Higher Education)", "Education (Primary/Secondary)")) %>% 
+  
+  group_by(industry) %>% 
+  summarize(
+    #Count of people in each category
+    count = n(),
+    
+    #Mean salary in each category
+    mean_salary = mean(annual_salary)
+  ) %>% 
+  arrange(desc(count))
+```
+Since the means of both categories are close, we merge them into a single industry called "Education".
 
 ```{r, manipulating_industry}
 #Based on count of people and mean salary in each category, merging categories
@@ -916,6 +1014,9 @@ us_data %>%
   )
 ```
 
+These are the 12 industries (including "Others") that we will use in our final model.
+
+Now, we look at the state variable -
 
 
 ```{r, salary_by_state}
@@ -933,9 +1034,15 @@ state_salary <- us_data %>%
 state_salary
 ```
 
+Since there are a lot of states and the count of some states is very low, including them all would create a massive list of variables. We will club the states into 3 categories of high, medium and low paying states based on the mean salaries.
+
+```{r, state_salary_quartile}
+fav_stats(state_salary$mean_salary)
+```
+Based approximately on these quartiles of mean salaries, we pick up thresholds to divide the list of states into high, medium and low paying states.
 
 ```{r, states_list_based_on_salary}
-#Based on count of people and mean salary in each category, categorising lists based on mean salaries
+#Based on count of people and mean salary in each category, categorizing lists based on mean salaries
 
 high_paying_state <- state_salary %>% 
   filter(mean_salary >= 100000) %>% 
@@ -973,8 +1080,9 @@ us_data %>%
   )
 ```
 
+We have 3 categories in the grouped state variable with a more uniform count than before.
 
-Before training our model, we divide the data into train and test sets in the proportion of 75:25 respectively. We will train our model on the train sets, use the model to get the predictions on the test set and analyze the error of predictions as compared to the actual values.
+Before training our model, we divide the data into train and test sets in the proportion of 75:25 respectively. We will train our model on the train sets, use the model to get the predictions on the test set and analyze the error of predictions as compared to the actual values. Analyzing the adjusted R squared and the RMSE on the test data will give us our best model.
 
 
 ```{r, train_test_split}
@@ -1021,7 +1129,7 @@ rmse_test <- test_data %>%
 cat(paste0("\nRMSE on testing set is: ", round(rmse_test, 4)))
 ```
 
-We observe that all the variables are significant at 95% confidence level as the p-value is less than 0.05. We get an R^2 of 11% and the test RMSE is 0.2047. Now, we add "race" to our model.
+We observe that all the variables are significant at 95% confidence level as the p-value is less than 0.05. We get an Adjusted R^2 of 11% and the test RMSE is 0.2047. Now, we add "race" to our model.
 
 
 ```{r, model2}
@@ -1051,7 +1159,8 @@ rmse_test <- test_data %>%
 
 cat(paste0("\nRMSE on testing set is: ", round(rmse_test, 4)))
 ```
-On using race as an explanatory variable in addition to age, we see that all the variables are still signficant at 95% confidence level. The R^2 increases to 12% and the test RMSE in 0.19.
+
+On using race as an explanatory variable in addition to age, we see that all the variables are still significant at 95% confidence level. The Adjusted R^2 increases to 12% and the test RMSE in 0.19.
 
 Now, we add gender to our model.
 
@@ -1084,7 +1193,7 @@ rmse_test <- test_data %>%
 cat(paste0("\nRMSE on testing set is: ", round(rmse_test, 4)))
 ```
 
-On adding gender to our model, we observe that all variables of field_exp and race are significant. Out of 3 gender variables, 2 are significant at 95% confidence level. The R^2 increases to 16% and the test RMSE is 0.18.
+On adding gender to our model, we observe that all variables of field_exp and race are significant. Out of 3 gender variables, 2 are significant at 95% confidence level. The Adjusted R^2 increases to 16% and the test RMSE is 0.18.
 
 Now, we add education level to our model.
 
@@ -1115,11 +1224,9 @@ rmse_test <- test_data %>%
 
 cat(paste0("\nRMSE on testing set is: ", round(rmse_test, 4)))
 ```
-We observe that all education_level variables are significant. The R^squared increases to 22% and the test RMSE is 0.22. We notice that the test RMSE increases to 0.22 from 0.18, which could mean that the model is beginning to become overfitting.
-
-
-We now add industry to our model -
-
+We observe that all education_level variables are significant. The Adjusted R^2 increases to 22% and the test RMSE is 0.22. 
+We notice that the test RMSE increases to 0.22 from 0.18. As the Adjusted R^2 increases but the RMSE also increases, this could mean that we are going towards overfitting. 
+However, we still add industry to our model and analyze R^2 and test RMSE -
 
 
 ```{r, model5}
@@ -1184,7 +1291,9 @@ rmse_test <- test_data %>%
 cat(paste0("\nRMSE on testing set is: ", round(rmse_test, 4)))
 ```
 
-We see that all variables of state are independent. The R^2 increases to 44% and the test RMSE is 0.1068.
+We see that all variables of state are independent. The R^2 increases to 44% and the test RMSE is 0.1068. 
+
+We will proceed with VIF calculation and Residual Analysis for Model6 (with field_exp_grouped, race_cleaned, gender, edu_level_grouped, industry_grouped and state_grouped as explanatory variables). We observe that the regression model is significant at 95% confidence level as the overall p-value is less than 0.05. Most of the variables are significant and we have the highest Adjusted R^2 (44%) for this model out of all the iterations. This means that this model is able to explain 44% of the variability in log of annual salary.
 
 We now check for collinearity between explanatory variables in our model by calculating VIF - 
 
@@ -1207,10 +1316,9 @@ autoplot(model6, which = 1:2) +
   theme_bw()
 ```
 
-By performing Residual Analysis, we observe that there is no significant pattern in the Residuals vs Fitted values plot. It is close to an ideal plot and we can conclude that there is no evidence of non-linear relationship between X & Y or non-constant variance. There seems to be no significant pattern in the data that is currently unaccounted for.
+By performing Residual Analysis, we observe that there is no significant pattern in the Residuals vs Fitted values plot. We can conclude that there is no strong evidence of non-linear relationship between X & Y or non-constant variance. There seems to be no significant pattern in the data that is currently unaccounted for.
 
 The Q-Q plot has most of the values on the straight line between -2 and +2. Hence, we can conclude that the residuals follow a Normal Distribution.
 
 
-
-
+We conclude that the log of annual salary can be best explained by the model with field_exp_grouped, race_cleaned, gender, edu_level_grouped, industry_grouped and state_grouped. We are able to explain 44% of the variability in log of annual salaries.
