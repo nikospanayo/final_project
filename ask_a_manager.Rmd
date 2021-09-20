@@ -128,6 +128,7 @@ skim(ask_a_manager_2021_new)
 ask_a_manager_2021_cleaned<-
   ask_a_manager_2021_new %>%  drop_na()
 #filter
+
 ask_a_manager_2021_cleaned<-
   ask_a_manager_2021_cleaned %>% 
   filter(annual_salary>10000&annual_salary<1000000)
@@ -214,11 +215,14 @@ ask_a_manager_2021_cleaned %>%
 ask_a_manager_2021_cleaned %>% 
   count(country, sort=TRUE) %>% 
   top_n(10) %>% 
-  ggplot(aes(y=fct_reorder(country,n),x= n))+
+  ggplot(aes(x=fct_reorder(country,n,.desc=TRUE),y= n,fill=country))+
   geom_col()+
   theme_bw()+
-  labs(x="Count", 
-       y="Country")+
+  geom_text(aes(label=n),size=3,vjust=-0.25)+
+  labs(y="Count", 
+       x="Country")+
+  guides(fill=FALSE)+
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
   NULL
 # use countrycode::countryname() to clean country names
 ```
@@ -230,12 +234,71 @@ ask_a_manager_2021_cleaned %>%
   count(city, sort=TRUE) %>% 
   # mutate(percent = 100* n/sum(n)) %>% 
   top_n(15) %>% 
-  ggplot(aes(y=fct_reorder(city,n),x= n))+
-  geom_col()+
+  ggplot(aes(x=fct_reorder(city,n, .desc=TRUE),y= n))+
+  geom_col(fill= "slateblue1")+
+  geom_text(aes(label=n),size=3,vjust=-0.25)+
   theme_bw()+
-  labs(x="Count", 
-       y="City")+
+  labs(y="Count", 
+       x="City")+
+   guides(fill=FALSE)+
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
   NULL
+```
+
+```{r, salaries acros USA cities}
+
+us_data %>% 
+  group_by(city) %>% 
+  summarise(mean_salary = mean(annual_salary),
+            count = n()
+         ) %>% 
+  arrange(desc(count)) %>% 
+ top_n(15) 
+
+  
+  # 
+  # #plot
+  # ggplot(aes(x=fct_reorder(city,mean_salary, .desc=TRUE),y= mean_salary))+
+  # geom_col(fill= "blue")+
+  # geom_text(aes(label=mean_salary),size=3,vjust=-0.25)+
+  # theme_bw()+
+  # labs(y="Mean Salary", 
+  #      x="City")+
+  #  guides(fill=FALSE)+
+  # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  # NULL
+  # 
+```
+
+
+```{r, boston health, san franscisco tech}
+
+
+us_data %>% 
+  filter(city == "San Francisco") %>% 
+  count(industry) %>% 
+  mutate(percent = n/sum(n)*100,
+         total = sum(n)) %>%  
+  arrange(desc(n))
+  
+us_data %>% 
+  filter(city != "San Francisco") %>% 
+  count(industry) %>% 
+  mutate(percent = n/sum(n)*100,
+         total = sum(n)) %>% 
+  arrange(desc(n))
+
+
+#two proportion z test
+tech<- c(243, 3174)
+totals <- c(504, 18990	)
+
+res1 <- prop.test(x = tech, n = totals)
+res1
+# not_san_fran
+# san_fran
+
+#ADD COMMENTS ABOUT SF AND TECH
 ```
 
 
@@ -247,7 +310,9 @@ ask_a_manager_2021_cleaned %>%
   ggplot(aes(x=education_level,y= n,fill=education_level))+
   geom_col()+
   theme_bw()+
-  labs(x= "Education level",y="Count")+
+  labs(title= "Frequency of each educational level",
+       x= "Education level",
+       y="Count")+
   scale_fill_brewer(palette = "Blues")+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   guides(fill=FALSE)+
@@ -267,20 +332,40 @@ ask_a_manager_2021_cleaned %>%
   scale_fill_brewer(palette = "Blues")+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   guides(fill=FALSE)+
-  labs(x="Gender",y="Count")+
+  labs(title= "Frequency of each gender",
+       x="Gender",
+       y="Count")+
   NULL
+```
+
+
+```{r}
+#Cleaning the race variable
+ask_a_manager_2021_cleaned <- ask_a_manager_2021_cleaned %>% 
+  mutate(
+    race_cleaned = case_when(
+      race %in% c('Asian or Asian American', 'Asian or Asian American, White') ~ 'Asian or Asian American',
+      race %in% c('Black or African American', 'Black or African American, White') ~ 'Black or African American',
+      race %in% c('Hispanic, Latino, or Spanish origin', 'Hispanic, Latino, or Spanish origin, White') ~ 'Hispanic, Latino, or Spanish origin',
+      race == "Another option not listed here or prefer not to answer" ~ "Others/Prefer not to say",
+      TRUE ~ race
+    )
+  )
+skim(ask_a_manager_2021_cleaned$race_cleaned)
 ```
 
 
 ```{r }
 # race
 ask_a_manager_2021_cleaned %>% 
-  filter(!is.na(race)) %>% 
-  count(race) %>% 
-  ggplot(aes(x=fct_reorder(race,n,.desc=TRUE),y= n,fill=race))+
+  filter(!is.na(race_cleaned)) %>% 
+  count(race_cleaned) %>% 
+  ggplot(aes(x=fct_reorder(race_cleaned,n,.desc=TRUE),y= n,fill=race_cleaned))+
   geom_col()+
   theme_bw()+
-  labs(x= "Race",y="Count")+
+  labs(title="Race Frequency",
+       x= "Race",
+       y="Count")+
   scale_fill_brewer(palette = "Blues")+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   guides(fill=FALSE)+
@@ -294,7 +379,10 @@ ask_a_manager_2021_cleaned %>%
 ask_a_manager_2021_cleaned %>% 
   count(overall_experience ) %>% 
   ggplot(aes(x=overall_experience,y = n))+
-  geom_col()+
+  geom_col(fill= "slateblue1")+
+  labs(x="Years of Professional Experience", 
+       y="Count",
+       title="Years of Experience Frequency")+
   theme_bw()+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
@@ -305,9 +393,12 @@ ask_a_manager_2021_cleaned %>%
 ```{r }
 # years_of_experience_in_field  
 ask_a_manager_2021_cleaned %>% 
-  count(field_experience  ) %>% 
+  count(field_experience) %>% 
   ggplot(aes(x=field_experience,y = n))+
-  geom_col()+
+  geom_col(fill= "slateblue1")+
+   labs(x="Years of Experience in Particular Field", 
+       y="Count",
+       title="Frequency of Field Experience")+
   theme_bw()+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
@@ -338,23 +429,154 @@ us_data %>%
   ) %>% 
   
   ggplot(aes(x = reorder(gender, -mean_salary), y = mean_salary)) +
-  geom_col()
+  geom_col(fill= "slateblue1")+
+ # geom_text(aes(label=mean_salary),size=3,vjust=-0.25)+
+   labs(x="Gender", 
+       y="Average Salary",
+       title="Average Salary for Gender (US)")+
+  theme_bw()
 ```
+```{r}
 
+
+unique(us_data["gender"])
+
+us_data %>% 
+  group_by(gender) %>% 
+  count(industry, sort=TRUE) %>% 
+  mutate(percent = 100* n/sum(n)) %>% 
+  filter(n>=500) %>% 
+  ggplot(aes(y=fct_reorder(industry,n,.desc = TRUE),x= n,fill=industry))+
+  geom_col()+
+  geom_text(aes(label=n),size=3,vjust=-0.25)+
+  facet_wrap(~gender)+
+    labs(x="Industry", 
+      y="Count",
+       title="Industries with >500 repondents")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
+  guides(fill=FALSE)
+```
 
 ```{r}
-#Cleaning the race variable
-us_data <- us_data %>% 
-  mutate(
-    race_cleaned = case_when(
-      race %in% c('Asian or Asian American', 'Asian or Asian American, White') ~ 'Asian or Asian American',
-      race %in% c('Black or African American', 'Black or African American, White') ~ 'Black or African American',
-      race %in% c('Hispanic, Latino, or Spanish origin', 'Hispanic, Latino, or Spanish origin, White') ~ 'Hispanic, Latino, or Spanish origin',
-      race == "Another option not listed here or prefer not to answer" ~ "Others/Prefer not to say",
-      TRUE ~ race
-    )
-  )
+
+us_data %>%
+  filter(gender %in% c("Woman","Man","Non-binary")) %>% 
+  count(gender) %>% 
+  ggplot(aes(x=fct_reorder(gender,n,.desc=TRUE),y = n,fill=gender))+
+  geom_col()+
+  theme_bw()+
+  scale_fill_brewer(palette = "Blues")+
+  geom_text(aes(label=n),size=3,vjust=-0.25)+
+  guides(fill=FALSE)+
+  labs(x="Gender",y="Count")+
+  NULL
+
 ```
+
+CHANGE THIS
+Null Hypothesis $H_0$ : $\mu_{exercise>=3days} - \mu_{exercise<3days} = 0$
+
+Alternative Hypothesis $H_1$ : $\mu_{exercise>=3days} - \mu_{exercise<3days} \neq 0$
+```{r, Salaries in Tech for each gender, height = 0.1}
+#using confidence intervals
+
+us_data_menvswomen <- us_data%>%
+  filter(industry == "Computing or Tech") %>% 
+  filter(gender %in% c("Man", "Woman")) %>% 
+  group_by(gender) %>% 
+  summarise(mean_salary = mean(annual_salary),
+            median_salary = median(annual_salary),
+            sd_salary = sd(annual_salary),
+            count = n(),
+            # get t-critical value with (n-1) degrees of freedom
+            t_critical = qt(0.975, count-1),
+            se_salary = sd_salary/sqrt(count),
+            margin_of_error = t_critical * se_salary,
+            salary_low = mean_salary - margin_of_error,
+            salary_high = mean_salary + margin_of_error) %>% 
+  arrange(desc(mean_salary))
+  us_data_menvswomen
+ # using welch  t test
+us_data_2 <- us_data %>% 
+    filter(industry == "Computing or Tech") %>% 
+  filter(gender %in% c("Man", "Woman"))
+us_data_2
+  unique(us_data_2["gender"])
+
+t.test(annual_salary ~ gender , data = us_data_2)
+
+#boxplots
+us_data %>% 
+  group_by(gender) %>% 
+  ggplot(aes(x=gender, y=annual_salary))+
+  geom_boxplot()
+us_data %>% 
+  filter(industry == "Computing or Tech") %>% 
+  group_by(gender) %>% 
+  ggplot(aes(x=gender, y=annual_salary))+
+  geom_boxplot()
+```
+
+
+
+```{r, asians in tech}
+#plot race in tech industry
+
+
+us_data %>% 
+  filter(industry == "Computing or Tech", race_cleaned != "Others/Prefer not to say") %>%
+  group_by(race_cleaned) %>% 
+  summarize(
+   count = n()
+   ) %>% 
+  
+  ggplot(aes(x = reorder(race_cleaned, -count), y = count)) +
+  geom_col(fill= "slateblue1") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+
+
+```
+NEEDS FIXING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+```{r, proportion of asians in tech vs in other idustries}
+#race proportions for tech 
+ us_data %>% 
+  filter(industry == "Computing or Tech") %>% 
+  count(race_cleaned) %>% 
+  mutate(percent = n/sum(n)*100)
+  
+#race proportions for non tech industries
+
+us_data %>% 
+  filter(industry != "Computing or Tech") %>% 
+  count(race_cleaned) %>% 
+  mutate(percent = n/sum(n)*100)
+
+#calculate proportions' CIs
+
+us_data%>%
+  mutate(tech_or_not = case_when(industry == "Computing or Tech"& race_cleaned=="Asian or Asian American" ~ "asian in tech",
+                                 industry == "Computing or Tech"& race_cleaned!="Asian or Asian American" ~ "other in tech",
+                                 industry != "Computing or Tech"& race_cleaned=="Asian or Asian American" ~ "asian in other industyr",
+                                 industry != "Computing or Tech"& race_cleaned!="Asian or Asian American" ~ "other in other industry")
+  ) %>% 
+  count(tech_or_not) %>% 
+  mutate(proportion = n/sum(n),
+         s_e = sqrt(proportion*(1-proportion)/sum(n)),
+         t_critical = qt(0.975,n-1),
+         interval_low = proportion - s_e*t_critical,
+         interval_high = proportion + s_e*t_critical
+         ) 
+#two proportion z test
+asians<- c(321, 865)
+totals <- c(321+3096, 865 + 15212)
+
+res <- prop.test(x = asians, n = totals)
+res
+#WRITE COMMENTS!!!!!!!!!!!!!!!!!!!!!!!!
+
+```
+
 
 ```{r, fig.width=12}
 us_data %>% 
@@ -364,8 +586,33 @@ us_data %>%
   ) %>% 
   
   ggplot(aes(x = reorder(race_cleaned, -mean_salary), y = mean_salary)) +
-  geom_col() +
+  geom_col(fill= "slateblue1") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+```
+****(maybe hyporthesis testing between races)****
+```{r, t test between salaries for defirrent racess}
+us_data%>%
+  group_by(race_cleaned) %>% 
+  summarise(mean_salary = mean(annual_salary),
+            median_salary = median(annual_salary),
+            sd_salary = sd(annual_salary),
+            count = n(),
+            # get t-critical value with (n-1) degrees of freedom
+            t_critical = qt(0.975, count-1),
+            se_salary = sd_salary/sqrt(count),
+            margin_of_error = t_critical * se_salary,
+            salary_low = mean_salary - margin_of_error,
+            salary_high = mean_salary + margin_of_error) %>% 
+  arrange(desc(mean_salary))
+
+ # using welch  t test
+us_data_race <- us_data %>% 
+  filter(race_cleaned %in% c("White", "Asian or Asian American"))
+
+t.test(annual_salary ~ race_cleaned , data = us_data_race) 
+
+
+
 ```
 
 
@@ -386,7 +633,20 @@ us_data %>%
   ) %>% 
   
   ggplot(aes(x = reorder(industry, -mean_salary), y = mean_salary)) +
-  geom_col() +
+  geom_col(fill= "slateblue1") +
+ theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+
+
+us_data %>%
+  filter(industry %in% top_industries) %>% 
+  group_by(industry) %>% 
+  #  summarize(
+  #   mean_salary = mean(annual_salary)
+  # ) %>% 
+  
+  ggplot(aes(x = reorder(industry, -annual_salary), y = annual_salary)) +
+  geom_violin() +
+  geom_boxplot(width=0.1)+
  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
 ```
 
@@ -399,7 +659,17 @@ us_data %>%
   ) %>% 
   
   ggplot(aes(x = overall_experience, y = mean_salary)) +
-  geom_col()
+  geom_col(fill= "slateblue1")
+```
+```{r}
+MAYBE TAKE A LOOK LATER
+# #corelation between exp and salary
+# library(moderndive)
+# #cor.test(overall_experience ~ mean_salary)
+# us_data %>% 
+# get_correlation(annual_salary~overall_experience)
+# 
+
 ```
 
 ```{r, fig.width = 12}
@@ -410,7 +680,19 @@ us_data %>%
   ) %>% 
   
   ggplot(aes(x = age, y = mean_salary)) +
-  geom_col()
+  geom_col(fill= "slateblue1")
+
+
+us_data %>%
+  group_by(age) %>% 
+  
+  ggplot(aes(x = age, y = annual_salary)) +
+   geom_violin()+
+  geom_boxplot(width=0.1)
+ 
+#INCLUDE CONFIDENCE INTERVAL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 ```
 
 
@@ -422,7 +704,7 @@ us_data %>%
   ) %>% 
   
   ggplot(aes(x = field_experience, y = mean_salary)) +
-  geom_col()
+  geom_col(fill= "slateblue1")
 ```
 
 
@@ -435,6 +717,23 @@ us_data %>%
   
   ggplot(aes(x = education_level, y = mean_salary)) +
   geom_col()
+
+
+us_data %>%
+ group_by(race_cleaned) %>% 
+  #count(education_level)
+  mutate(
+    n= count(education_level),
+    proportion = n/sum(n)
+  ) %>% 
+  
+  ggplot(aes(x = education_level, y = proportion)) +
+  geom_col()+
+  facet_wrap(~race_cleaned)
 ```
 
-
+HYPOTHEISS THEST
+asians in tech LATER
+SLAARY IN WOMEN AND MEN IN TECH DONE
+# RACE SALARY IS TI DIFFERENT (WHITE VS OTHER) DOOOONE
+EDUCATIONS VS RACE
