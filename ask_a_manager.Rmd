@@ -460,7 +460,7 @@ us_data %>%
   group_by(gender) %>% 
   ggplot(aes(x=gender, y=annual_salary))+
   geom_violin()+
-  geom_boxplot()+
+  geom_boxplot(width=0.3)+
   labs(x="Gender", 
        y="Annual Salary",
        title="Annual Salary for Gender (US)")+
@@ -471,7 +471,7 @@ us_data %>%
   group_by(gender) %>% 
   ggplot(aes(x=gender, y=annual_salary))+
   geom_violin()+
-  geom_boxplot()+
+  geom_boxplot(width=0.3)+
    labs(x="Gender", 
        y="Annual Salary in Tech",
        title="Annual Salary in Tech for Gender (US)")+
@@ -657,7 +657,8 @@ us_data %>%
   geom_boxplot(width=0.1)+
   labs(x="Industry", 
        y="Average Salary",
-       title="Distribution of salary for every industry")+
+       title="Distribution of salary for every industry",
+       subtitle="Ordered by mean")+
   theme_bw()+
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
   NULL
@@ -667,101 +668,78 @@ us_data %>%
 ```{r,salary vs experience levels}
 
 us_data %>%
-  group_by(overall_experience) %>% 
-  summarize(
-    mean_salary = mean(annual_salary)
-  ) %>% 
-  
-  ggplot(aes(x = overall_experience, y = mean_salary)) +
-  geom_text(aes(label=round(mean_salary,0)),size=3,vjust=-0.25)+
-  geom_col(fill= "slateblue1")+
+  ggplot(aes(x = overall_experience, y = annual_salary, fill=overall_experience)) +
+  geom_violin()+
+  geom_boxplot(width=0.1)+
+  scale_fill_brewer(palette="Blues") + theme_classic()+
    labs(x="Overall Experience", 
-       y="Average Salary",
-       title="Average salary for different experience levels")+
+       y="Annual Salary",
+       title="Annual salary for different experience levels",
+       subtitle="Ordered by mean")+
   theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  guides(fill=FALSE)+
   NULL
-#DO LATER MKE BOXPLOT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# us_data %>% 
-#   ggplot(aes(x = overall_experience, y = mean_salary)) +
-#   geom_text(aes(label=round(mean_salary,0)),size=3,vjust=-0.25)+
-#   geom_boxplot(fill= "slateblue1")+
-#    labs(x="Overall Experience", 
-#        y="Average Salary",
-#        title="Average salary for different experience levels")+
-#   theme_bw()+
-#   NULL
+
 ```
 
 
 
 ```{r, salary for different experience}
 us_data %>%
-  group_by(field_experience) %>% 
-  summarize(
-    mean_salary = mean(annual_salary)
-  ) %>% 
   
-  ggplot(aes(x = field_experience, y = mean_salary)) +
-  geom_col(fill= "slateblue1")+
+  ggplot(aes(x = field_experience, y = annual_salary, fill=field_experience)) +
+  geom_violin()+
+  geom_boxplot(width=0.1)+
+  scale_fill_brewer(palette="Blues") + theme_classic()+
   labs(x="Field Experience", 
-       y="Average Salary",
-       title="Average salary for different field experience")+
+       y="Annual Salary",
+       title="Annual salary for different field experience",
+       subtitle="Ordered by mean")+
   theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  guides(fill=FALSE)+
+
+
   NULL
 ```
 
 
 ```{r, average salary vs age}
-# us_data %>%
-#   group_by(age) %>% 
-#   summarize(
-#     mean_salary = mean(annual_salary)
-#   ) %>% 
-#   
-#   ggplot(aes(x = age, y = mean_salary)) +
-#   geom_col(fill= "slateblue1")+
-#   geom_text(aes(label=round(mean_salary,0)),size=3,vjust=-0.25)+
-#   labs(x="Age", 
-#        y="Average Salary",
-#        title="Barchart of average salary for age")+
-#   theme_bw()+
-#   NULL
 
 
 us_data %>%
   group_by(age) %>% 
   
-  ggplot(aes(x = age, y = annual_salary)) +
-   geom_violin()+
+  ggplot(aes(x = age, y = annual_salary, fill=age)) +
+  geom_violin()+
+  scale_fill_brewer(palette="Blues") + theme_classic()+
   geom_boxplot(width=0.1)+
    labs(x="Age", 
        y="Annual Salary",
        title="Distribution of annual salary for age")+
   theme_bw()+
+  guides(fill=FALSE)+
   NULL
  
-#INCLUDE CONFIDENCE INTERVALs!!!!!!!!!!!!!!!
-
 
 ```
 
 
 ```{r, education vs salary}
-#TURN INTO BOXPLOT!!!!!!!!!!!!!!!!!!!!
 
 us_data %>%
-  group_by(education_level) %>% 
-  summarize(
-    mean_salary = mean(annual_salary)
-  ) %>% 
-  
-  ggplot(aes(x = education_level, y = mean_salary)) +
-  geom_col(fill= "slateblue1")+
-  geom_text(aes(label=round(mean_salary,0)),size=3,vjust=-0.25)+
+  ggplot(aes(x = education_level, y = annual_salary,fill=education_level)) +
+  geom_violin() +
+  scale_fill_brewer(palette="Blues") + theme_classic()+
+  geom_boxplot(width=0.1)+
+  #geom_text(aes(label=round(mean(annual_salary),0)),size=3,vjust=-0.25)+
   labs(x="Education Level", 
-       y="Average Salary",
-       title="Average salary for different education levels")+
+       y="Annual Salary",
+       title="Annual salary for different education levels",
+       subtitle="mean increases across the plot")+
   theme_bw()+
+  guides(fill=FALSE)+
   NULL
 
 ```
