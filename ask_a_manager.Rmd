@@ -21,14 +21,16 @@ The following project focuses on the analysis of a dataset on annual salaries. A
 
 The dataset obtained from the survey  contained a large number of respondents that were predominantly white females with high education levels.
 
-Due to the limited observations for countries other that the US we decided to focus our entire analysis only on US-Salary (respondents from the US). In addition, we eliminated some of the columns that were not directly related with annual salary and/or contained too many individual answers (i.e. job title) unable to conclude something from them. After building a clean and workable dataset, the exploratory data analysis was performed and visualized to get a better understanding of the survey respondents and the data in general. We observed that:
-- XXX hypothesis 1
-- XXX Hypothesis 2
-- XXX Hypothesis 3
-- Hypothesis 4
-- Regression Model
+Due to the limited observations for countries other that the US we decided to focus our entire analysis only on US-Salary (respondents from the US). In addition, we eliminated some of the columns that were not directly related with annual salary and/or contained too many individual answers (i.e. job title) unable to conclude something from them. After building a clean and workable dataset, the exploratory data analysis was performed and visualized to get a better understanding of the survey respondents and the data in general. 
+We build the following `hypothesis test`:
 
-Thereafter, we built a regression model through iteration and using a test train model. The final model includes the independent variables: X, Y, Z which has a R-squared value of XXX. The final regression model is used to XXXX
+- Hypothesis 1: Whether the average annual salary for tech industry is difference between man and woman
+- Hypothesis 2:Whether people in San Francisco tend to work in tech industry compared to other cities in America
+- Hypothesis 3: Whether Asian salary is higher than other races.
+- Hypothesis 4: Whether Asian tend to work in tech industries than other fields
+
+
+Thereafter, we built a `regression model` through iteration and using a test train model. The final model includes the independent variables: X, Y, Z which has a R-squared value of XXX. The final regression model is used to XXXX
 
 ```{r, setup, echo=FALSE}
 knitr::opts_chunk$set(
@@ -78,7 +80,19 @@ ask_a_manager_2021 <- read_csv(here::here("data", "ask_a_manager_2021.csv")) %>%
 #skim data to get initial understanding of dataset such as datatypes, missing values etc. 
 skimr::skim(ask_a_manager_2021)
 ```
-> The dataset contains a lot of different responses and datatypes. Further, tere are also various NA values that we will need to clean from the data in a next step. Below we will clean the data in a first step.
+> The dataset contains a lot of different responses and datatypes. Further, there are also various NA values that we will need to clean from the data in a next step. Below we will clean the data in a first step.
+
+- Rename columns
+- Delete columns (i.e. time stamp, other monetary comp)
+- Changed character data into categorical (i.e. Age, overall experience, education level)
+- Clean country name using countrycode()
+- Delete industries with <100 respondants
+- Delete race with <100 respondants
+- Regroup race into only 5 
+- Dropping NA values
+- Cleaning for outliers in salary
+
+
 
 ```{r, data_cleaning}
 #data cleaning
@@ -145,6 +159,11 @@ race_list<-ask_a_manager_2021_new %>%
 ask_a_manager_2021_new<-ask_a_manager_2021_new %>% 
   filter(race %in% race_list)
 
+#drop_na
+ask_a_manager_2021_cleaned<-
+  ask_a_manager_2021_new %>%  drop_na()
+
+
 ```
 
 > After a first cleaning we skim the new dataset again.
@@ -156,10 +175,6 @@ skim(ask_a_manager_2021_new)
 > To get a more comprehensiv picture we will only focus on respondents with a salary between 10'000 and 1'000'000 USD.
 
 ```{r cleaned_data}
-#drop_na
-ask_a_manager_2021_cleaned<-
-  ask_a_manager_2021_new %>%  drop_na()
-
 #filter
 ask_a_manager_2021_cleaned<-
   ask_a_manager_2021_cleaned %>% 
@@ -253,7 +268,7 @@ ggplot(us_data, aes(x=log(annual_salary)))+
 # Which one (salary vs. log(salary)) is better to use in a regression model? Why?
 #log salary appears to b more evenly distributed.
 ```
-> COMMENTING ON ABOVE GRAPH!!!!!!!!!!
+
 
 
 ```{r, age distribution }
@@ -293,7 +308,45 @@ us_data %>%
   guides(fill=FALSE)
 ```
 
-> Interestingly Nonprofits are the second most frequent industry of the survey, an industry usually less mentioned.
+> Higer propotion of respondents work in computing or tech industry. Interestingly Nonprofits are the second most frequent industry of the survey, an industry usually less mentioned.
+
+```{r salary in different industry}
+top_industries <- us_data %>% 
+  group_by(industry) %>% 
+  count(sort = TRUE) %>% 
+  head(10) %>% 
+  select(industry) %>% 
+  pull()
+
+us_data %>% 
+  filter(industry %in% top_industries) %>%
+  mutate(industry = fct_reorder(industry, annual_salary)) %>% 
+  ggplot(aes(x = annual_salary, y = industry, 
+             fill = industry)) +
+  geom_boxplot() +
+  #add labels
+  labs(title = 'Boxplot of annual vs industry',
+        x = 'Annual Income',
+        y = 'Industry') +
+  theme_bw()+
+  guides(fill= FALSE)
+us_data %>%
+  filter(industry %in% top_industries) %>% 
+  group_by(industry) %>% 
+  ggplot(aes(x = reorder(industry, -annual_salary), y = annual_salary)) +
+  geom_violin() +
+  geom_boxplot(width=0.1)+
+  labs(x="Industry", 
+       y="Average Salary",
+       title="Distribution of salary for every industry",
+       subtitle="Ordered by mean")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
+  NULL
+
+
+```
+> As the boxplot shows, tech, law and engineering are the top three industries that have highest annual salary.
 
 ```{r, city barchart }
 # 'city' 
@@ -368,7 +421,7 @@ us_data %>%
 
 ```
 
-> The vast majority of the dataset is white. 
+> The vast majority of the respondents are white people. 
 
 ```{r, barchart for proffesional experience years }
 
@@ -385,7 +438,7 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
 ```
-> The survey asked mostly fairly experienced people.
+> Years of professional experience is close to normal distribution. The largest propotion is people with 11-20years of experience.
 
 ```{r, barchart for years of professional experience in particular field }
 # years_of_experience_in_field  
@@ -399,7 +452,9 @@ us_data %>%
   theme_bw()+
   geom_text(aes(label=n),size=3,vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+
 ```
+> Years of experience in particular field are more evenly distributed. 
 
 
 ```{r, observe the frequencies of each gender}
@@ -416,8 +471,8 @@ us_data %>%
        y="Count")+
   NULL
 ```
+> Survey respondents of America are mostly female.
 
-> Vast majority of respondents are women. This might explain the high count of people working in nonprofits.
 
 ```{r,compare salaries for each gender}
 
@@ -436,12 +491,7 @@ us_data %>%
        title="Average Salary for Gender (US)")+
   theme_bw()
 ```
-
-> Men and interestingly "don't know or NA" have the highest annual salary.
-
-# 2.2.2 Hypothesis testing
-
-# 
+> Average salary of man is higher than woman an non-binary respondents.
 
 ```{r, facet wrap for women and men}
 
@@ -462,13 +512,20 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
   guides(fill=FALSE)
 ```
+> To futher investgate why salary of man is higher than woman, we make a graph of their industry. We filter induatries than have more than 500 respondents and surprising find that all man work in computing or tech industry.
 
 
+- Observation 1: Mean salary men > Mean salary women
+- Observation 2: Computing &Tech is highest paid industry
+- Observation 3: All male respondents work in Tech
+
+Following these observations,we want to compare whether the average annual salary for tech industry is difference between man and woman.
+
+### Hypothesis 1: 
 Null Hypothesis $H_0$ : $\mu_{Men.tech.salary} - \mu_{Female.tech.salary} = 0$
 
 Alternative Hypothesis $H_1$ : $\mu_{Men.tech.salary} - \mu_{Female.tech.salary}\neq 0$
 ```{r, Salaries in Tech for each gender, height = 0.1}
-
 #compute confidence intervals
 
 us_data_menvswomen <- us_data%>%
@@ -519,6 +576,9 @@ us_data %>%
   theme_bw()
 ```
 
+> We use confident interval and t test to show the difference.The confident interval of man is [142345,149903] which is not overlapped with woman [116518,121502] and p value in t test is <2e-16. Therefore we reject the null hypothesis and conclude there is a significant difference in annual salary between man and woman who work in tech industry.
+
+
 ```{r, salaries across USA cities}
 #create a table with mean salaries across different US cities
 us_data %>% 
@@ -530,6 +590,17 @@ us_data %>%
   #display only top 15
  top_n(15) 
 ```
+
+> San Francisco has the highest mean salary of all US cities
+
+So far, we have the following observation of San Francisco and tech industry.
+- Observation 1: San Francisco has the highest mean salary of all US cities
+- Observation 2: Mean salary is highest in Computing &Tech
+
+We want to figure out whether this is because most people in San Francisco tend to work in tech industry compared to other cities in America.
+
+
+### Hypothesis 2:
 Null Hypothesis $H_0$ : $p_{SF.tech} = p_{notSF.tech} $
 
 Alternative Hypothesis $H_1$ : $p_{SF.tech} \neq p_{notSF.tech} $
@@ -563,18 +634,18 @@ res1
 
 ```
 
+> 48% San Francisco vs. 16% in other US cities. Proportion of tech-employees in San Francisco is significantly higher than in other US cities as P-value < 2e-16. 
 
 ```{r, race in tech}
 #plot race in tech industry
-
 
 us_data %>% 
   filter(industry == "Computing or Tech", race_cleaned != "Others/Prefer not to say") %>%
   group_by(race_cleaned) %>% 
   summarize(
-   count = n()
+   count = n(),
+   mean_salary = mean(annual_salary)
    ) %>% 
-  
   ggplot(aes(x = reorder(race_cleaned, -count), y = count)) +
   geom_col(fill= "slateblue1") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
@@ -585,37 +656,7 @@ us_data %>%
   geom_text(aes(label=count),size=3,vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
-
-
 ```
-
-Null Hypothesis $H_0$ : $p_{Asian.tech} = p_{other.tech} $
-
-Alternative Hypothesis $H_1$ : $p_{Asian.tech} \neq p_{other.tech} $
-
-```{r, proportion of asians in tech vs in other idustries}
-
-#calculate proportions
-
-us_data%>%
-  mutate(tech_or_not = case_when(industry == "Computing or Tech"& race_cleaned=="Asian or Asian American" ~ "asian in tech",
-                                 industry != "Computing or Tech"& race_cleaned=="Asian or Asian American" ~ "asian in other industry",
-                                 industry == "Computing or Tech"& race_cleaned!="Asian or Asian American" ~ "other in tech",
-                                 industry != "Computing or Tech"& race_cleaned!="Asian or Asian American" ~ "other in other industry")
-  ) %>% 
-  count(tech_or_not) 
-
-#two proportion z test
-asians<- c(321, 865)
-totals <- c(321+3096, 865 + 15212)
-
-res <- prop.test(x = asians, n = totals)
-res
-
-
-```
-
-
 ```{r,race vs salary}
 us_data %>% 
   group_by(race_cleaned) %>% 
@@ -633,6 +674,10 @@ us_data %>%
   geom_text(aes(label=round(mean_salary,0)),size=3,vjust=-0.25)+
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 ```
+
+> In the previous two graphs, we see that mean salary of Asian/Asian American is higher than other races.We want to know if this result is significant.
+
+### Hypothesis 3:
 Null Hypothesis $H_0$ : $p_{Asian.Salary} = p_{White.Salary} $
 
 Alternative Hypothesis $H_1$ : $p_{Asian.Salary} \neq p_{White.Salary} $
@@ -664,46 +709,60 @@ t.test(annual_salary ~ race_cleaned , data = us_data_race)
 
 ```
 
+> By comparing the confidence interval of annual income between each race, we see there is no overlap between Asian and other races. And t test between Asian and White has p-value <2e-16. Therefore we conclude annual salary of Asian is significantly higher than other races.
 
-```{r,mean salaries for diferent industries}
 
-top_industries <- us_data %>% 
-  group_by(industry) %>% 
-  count(sort = TRUE) %>% 
-  head(10) %>% 
-  select(industry) %>% 
-  pull()
 
-us_data %>%
-  filter(industry %in% top_industries) %>% 
-  group_by(industry) %>% 
-  summarize(
-    mean_salary = mean(annual_salary)
+```{r}
+us_data %>% 
+  group_by(city) %>% 
+  filter(city %in% c("San Francisco", "Seattle","New York","Washington","New York City")) %>% 
+  mutate(
+    is_asian_american = case_when(
+      race == "Asian or Asian American" ~ 1,
+      TRUE ~ 0
+    )
   ) %>% 
-  ggplot(aes(x = reorder(industry, -mean_salary), y = mean_salary)) +
-  geom_text(aes(label=round(mean_salary,0)),size=3,vjust=-0.25)+
-  geom_col(fill= "slateblue1") +
-   labs(x="Industry", 
-       y="Average Salary",
-       title="Average salary for every industry")+
-  theme_bw()+
- theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
-
-
-us_data %>%
-  filter(industry %in% top_industries) %>% 
-  group_by(industry) %>% 
-  ggplot(aes(x = reorder(industry, -annual_salary), y = annual_salary)) +
-  geom_violin() +
-  geom_boxplot(width=0.1)+
-  labs(x="Industry", 
-       y="Average Salary",
-       title="Distribution of salary for every industry",
-       subtitle="Ordered by mean")+
-  theme_bw()+
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))+
-  NULL
+  summarize(
+    proportion_of_asian_americans = mean(is_asian_american) * 100
+  )
 ```
+
+> We select 5 cities with top annual salary and summarize the propotion of Asian employee there. San Francico has the highest propotion of Asian.
+
+- Observation 1: Mean salary of Asian/Asian American is higher than other races
+- Observation 2: 18% of respondents in San Francisco are Asians
+
+Therefore, we want to figure out whether Asian tend to work in tech industries than other fields which leads the result of a large percentage in San Francisco.
+
+### Hypothesis 4:
+Null Hypothesis $H_0$ : $p_{Asian.tech} = p_{other.tech} $
+Alternative Hypothesis $H_1$ : $p_{Asian.tech} \neq p_{other.tech} $
+
+```{r, proportion of asians in tech vs in other idustries}
+
+#calculate proportions
+
+us_data%>%
+  mutate(tech_or_not = case_when(industry == "Computing or Tech"& race_cleaned=="Asian or Asian American" ~ "asian in tech",
+                                 industry != "Computing or Tech"& race_cleaned=="Asian or Asian American" ~ "asian in other industry",
+                                 industry == "Computing or Tech"& race_cleaned!="Asian or Asian American" ~ "other in tech",
+                                 industry != "Computing or Tech"& race_cleaned!="Asian or Asian American" ~ "other in other industry")
+  ) %>% 
+  count(tech_or_not) 
+
+#two proportion z test
+asians<- c(321, 865)
+totals <- c(321+3096, 865 + 15212)
+
+res <- prop.test(x = asians, n = totals)
+res
+
+
+```
+
+> The porption of Asian in Tech (9.39%) is significantly different from Asian in other industries (5.38%) as P-value < 2e-16. We can conclude Asain tend to work in tech industries.
+
 
 
 ```{r,salary vs experience levels}
@@ -768,6 +827,7 @@ us_data %>%
 
 
 ```{r, education vs salary}
+
 us_data %>%
   ggplot(aes(x = education_level, y = annual_salary,fill=education_level)) +
   geom_violin() +
@@ -781,8 +841,8 @@ us_data %>%
   theme_bw()+
   guides(fill=FALSE)+
   NULL
-```
 
+```
 
 
 ## REGRESSION MODELING
