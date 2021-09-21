@@ -472,6 +472,108 @@ us_data %>%
 
 > To futher investgate why salary of man is higher than woman, we make a graph of their industry. We filter induatries than have more than 500 respondents and surprising find that all men work in computing or tech industry.
 
+To investigate gender gaps in salary for various industries, we plot a graph which shows the difference between mean salaries for males and females for top industries -
+
+```{r, gender_gap_industry}
+gender <- us_data %>% 
+  
+  #Filtering data for top industries (having at least 500 respondents) and Men and Women
+  filter(industry %in% industry_list, gender %in% c("Man", "Woman")) %>% 
+  group_by(industry, gender) %>% 
+  
+  #Calculating mean salaries after grouping
+  summarize(
+    mean_salary = mean(annual_salary)
+  )
+
+#Pivoting the data to wide format
+gender_pivot <- 
+  pivot_wider(
+    gender,
+    names_from = gender,
+    values_from = mean_salary
+  )
+
+#Calculating the difference between average salaries of males and females
+gender_pivot <- gender_pivot %>% 
+  mutate(
+    diff = Man - Woman,
+    indicator = ifelse(diff > 0, "Excess for Males", "Excess for Females")
+  )
+
+#Plotting the data
+ggplot(gender_pivot, aes(x=reorder(industry, diff), y=diff, label=diff)) +
+  geom_bar(stat = 'identity', width = 0.4, aes(fill = indicator)) +
+  
+  #Filling the bars according to excess means
+  scale_fill_manual(labels = c("Excess for Males", "Excess for Females"),
+                    values = c("Excess for Males" = "Sky Blue", "Excess for Females" = "Light Pink")) +
+  #Adding title and axes labels
+  labs(
+    title = "Gender Gap in Mean Salaries for Top Industries",
+    y = "Difference in Mean Salaries for Males and Females",
+    x = "Industry"
+  ) +
+  theme_bw() +
+  #Removing the legend title
+  guides(fill=guide_legend(title="")) +
+  coord_flip()
+```
+
+
+We observe that for most of the top industries, males have a higher average salary than females. The difference is largest for Accounting, Banking & Finance, and Computing & Tech industries. For only 3 industries - Agriculture or Forestry, Hospitality & Events and Art& Design, the average salary of females is higher.
+
+Now, we explore gender gap in salary for states -
+
+```{r, gender_gap_states}
+states_pay <- us_data %>% 
+  
+  #Filtering data for Men and Women and removing NAs for states
+  filter(state != "NA", gender %in% c("Man", "Woman")) %>% 
+  group_by(state, gender) %>% 
+  
+  #Calculating mean salaries after grouping
+  summarize(
+    mean_salary = mean(annual_salary)
+  )
+
+#Pivoting the data to wide format
+states_pivot <- 
+  pivot_wider(
+    states_pay,
+    names_from = gender,
+    values_from = mean_salary
+  )
+
+#Calculating the difference between average salaries of males and females
+states_pivot <- states_pivot %>% 
+  mutate(
+    diff = Man - Woman,
+    indicator = ifelse(diff > 0, "Excess for Males", "Excess for Females")
+  )
+
+#Plotting the data
+ggplot(states_pivot, aes(x=reorder(state, diff), y=diff, label=diff)) +
+  geom_bar(stat = 'identity', width = 0.4, aes(fill = indicator)) +
+  
+  #Filling the bars according to excess means
+  scale_fill_manual(labels = c("Excess for Males", "Excess for Females"),
+                    values = c("Excess for Males" = "Sky Blue", "Excess for Females" = "Light Pink")) +
+  #Adding title and axes labels
+  labs(
+    title = "Gender Gap in Mean Salaries for States",
+    y = "Difference in Mean Salaries for Males and Females",
+    x = "State"
+  ) +
+  theme_bw() +
+  #Removing the legend title
+  guides(fill=guide_legend(title="")) +
+  coord_flip()
+```
+
+
+We observe that most of the states have a higher average salary for males, as compared to females. The difference is the largest for South Dakota and Arkansas. For only 3 states - Oklahoma, Wyoming and Maine, the average salary of females is higher.
+
 - Observation 1: Mean salary men > Mean salary women
 - Observation 2: Computing & Tech is highest paid industry
 - Observation 3: All male respondents work in Tech
