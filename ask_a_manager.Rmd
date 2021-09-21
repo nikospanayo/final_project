@@ -12,12 +12,13 @@ output:
     code_folding: show
 ---
 
-## 1 Ask a manager: Data on annual salary from a survey
+## Ask a manager: Data on annual salary from a survey
 
-## 1.1 Introduction
+### Introduction
+
 The following project focuses on the analysis of a dataset on annual salaries. As part of the analysis we will first perform Exploratory Data Analysis (EDA) to better understand the parameters before we will explore the data further using Data visualization, Hypothesis testing and Regression Analysis. The aim is to explain the patterns and differences in different annual salaries.
 
-## 1.2 Executive Summary
+### Executive Summary
 
 The dataset obtained from the survey  contained a large number of respondents that were predominantly white females with high education levels.
 
@@ -30,7 +31,14 @@ We build the following `hypothesis test`:
 - Hypothesis 4: Whether Asian tend to work in tech industries than other fields
 
 
-Thereafter, we built a `regression model` through iteration and using a test train model. The final model includes the independent variables: X, Y, Z which has a R-squared value of XXX. The final regression model is used to XXXX
+When we were going to build our `regression models`, we first had to decide which variable we were going to use as our dependent variable because we have two choices——\"annual salary\" and \"log annual salary\". After plotting two distribution graphs, we found out that \"log annual salary\" fit into a normal distribution and thus we decided to choose \"log annual salary\" for models generation.
+
+We then took a look at \"age\", \"overall_experience\" and \"field_experience\" three variables because people would become older as they have more years of working experiences. Hence, we run 3 very simple models with each of these as explanatory variable to analyze which of these does the best job of explaining the variability in log of annual salary. All three variables passed t-tests and we finally chose \"field_experience\" as it had the largest R^squared. It also made sense logically since jobs nowadays require people to acquire more specific experiences in order to perform well.
+
+Then we met another problem. We had too many categorical variables in our dataset and if we included most of them without merging some of groups, the model will become both huge and hard to explain. Thus, we did some works on combination for \"field_experience\", \"education_level\", \"industry\" and \"state\". You could find more detailed explanations on how we regroup them later in comments for the regression part. Knowing that we create \"field_exp_grouped\", \"edu_level_grouped\", \"industry_grouped\" and \"state_grouped\" four variables used for models now would be enough.
+
+Thereafter, we built six regression models through iteration and we split our dataset by 0.75:0.25 into train and test groups. The final model we regarded as our best includes six independent variables: \"field_exp_grouped\", \"race_cleaned\", \"gender\", \"edu_level_grouped\", \"industry_grouped\", \"state_grouped\" which has a R-squared value of 0.44 and a RMSE of 0.1068. This model also passed both vif and diagnostic tests so we could extract insights from it. We concluded that people with poor field experiences would get a significant disadvantage on their salary, Hispanic, Latino, or Spanish origin and women were groups paid much lower, people should look for jobs in rich states if they want to have higher annual salary, professional degree gives you a greater salary boost than a PhD, and avoid education and nonprofits industries but Computing or Tech industry instead if you want to get an attractive pay.
+
 
 ```{r, setup, echo=FALSE}
 knitr::opts_chunk$set(
@@ -68,9 +76,8 @@ library(infer)
 library(openintro)
 ```
 
-## 2 Exploratory Data Analysis
 
-## 2.1 Data Cleaning
+## Data Cleaning
 ```{r load_data}
 
 #read local copy
@@ -91,7 +98,6 @@ skimr::skim(ask_a_manager_2021)
 - Regroup race into only 5 
 - Dropping NA values
 - Cleaning for outliers in salary
-
 
 
 ```{r, data_cleaning}
@@ -172,7 +178,7 @@ ask_a_manager_2021_cleaned<-
 skim(ask_a_manager_2021_new)
 ```
 
-> To get a more comprehensiv picture we will only focus on respondents with a salary between 10'000 and 1'000'000 USD.
+> To get a more comprehensive picture, we will only focus on respondents with a salary between $10,000 and $1,000,000 (removing outliers).
 
 ```{r cleaned_data}
 #filter
@@ -183,15 +189,16 @@ ask_a_manager_2021_cleaned<-
 skim(ask_a_manager_2021_cleaned)
 ```
 
-## 2.2 Further Data Exploration
+## Exploratory Data Analysis
 
 > To get a sense of the survey respondents the following graphs explore the respondents origin, their gender, race etc.
 
-```{r, countries with the most respondents }
+```{r, countries with the most respondents, fig.width=12}
 #we will filter for countries with the most respondents
 ask_a_manager_2021_cleaned %>% 
   count(country, sort=TRUE) %>% 
   top_n(10) %>% 
+  
 #plot the counts of each country
   ggplot(aes(x=fct_reorder(country,n,.desc=TRUE),y= n,fill=country))+
   geom_col(fill= "slateblue1")+
@@ -221,57 +228,24 @@ us_data <- us_data %>%
   drop_na()
 ```
 
-# 2.2.1 Analysis on US-Salary
+## Analysis on US-Salary
 
 > In the following exploratory data analysis is conducted on the different variables to thereafter continue with hypothesis testing and regression models.
 
-```{r, salary distribution}
+```{r, salary_distribution, fig.width = 12}
 
 # How is salary distributed?
-ggplot(us_data, aes(y=annual_salary))+
-  geom_boxplot()+
- labs(y="Annual Salary", 
-       x="",
-       title="Boxplot of Annual Salary")+
-  theme_bw()+
-   theme(axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank())
-
 ggplot(us_data, aes(x=annual_salary))+
-  stat_ecdf()+
-   labs(y="ECDF value", 
-       x="Annual Salary ($)",
-       title="ECDF plot of Annual Salary")+
-  theme_bw()
-```
-
-
-```{r, log salary distribution}
-
-# what about log(salary)? 
-ggplot(us_data, aes(x=log(annual_salary)))+
   geom_density()+
-  labs(y="Density", 
-       x="Log of Annual Salary",
-       title="Density plot of log(Annual Salary)")+
+ labs(x="Annual Salary", 
+       y="Density",
+       title="Density Plot of Annual Salary")+
   theme_bw()
-
-
-ggplot(us_data, aes(x=log(annual_salary)))+
-  stat_ecdf()+
-  labs(y="ECDF value", 
-       x="Log of Annual Salary",
-       title="ECDF plot of log(Annual Salary)")+
-  theme_bw()
-
-# Which one (salary vs. log(salary)) is better to use in a regression model? Why?
-#log salary appears to b more evenly distributed.
 ```
 
+> Looking at the distribution of Annual Salary, we observe that the distribution is heavily skewed towards the right. This means that most of the respondents have an annual salary around the median, but there are some respondents who have very high annual salaries.
 
-
-```{r, age distribution }
+```{r, age_distribution, fig.width = 12}
 # age distribution in the survey
 
 us_data %>% 
@@ -284,12 +258,10 @@ us_data %>%
   theme_bw()+
   scale_fill_brewer(palette = "Blues")+
   guides(fill=FALSE)
-
-
 ```
-> Vast majority of survey respondents are between 25-44 indicating that the mean salary is probably higher than the mean salary of the entire US population.
+> Vast majority of survey respondents are between 25-44.
 
-```{r, most observed industries }
+```{r, most observed industries, fig.width = 12}
 # More than 1000 industries can be observed in our dataframe
 #we will filter for industries with more than 500 respondents
 
@@ -308,9 +280,9 @@ us_data %>%
   guides(fill=FALSE)
 ```
 
-> Higer propotion of respondents work in computing or tech industry. Interestingly Nonprofits are the second most frequent industry of the survey, an industry usually less mentioned.
+> Higher propotion of respondents work in Computing or Tech industry. Interestingly, Nonprofits are the second most frequent industry of the survey, an industry usually less mentioned.
 
-```{r salary in different industry}
+```{r salary in different industry, fig.width = 12}
 top_industries <- us_data %>% 
   group_by(industry) %>% 
   count(sort = TRUE) %>% 
@@ -325,7 +297,7 @@ us_data %>%
              fill = industry)) +
   geom_boxplot() +
   #add labels
-  labs(title = 'Boxplot of annual vs industry',
+  labs(title = 'Boxplot of Annual Salary vs Industry',
         x = 'Annual Income',
         y = 'Industry') +
   theme_bw()+
@@ -348,26 +320,7 @@ us_data %>%
 ```
 > As the boxplot shows, tech, law and engineering are the top three industries that have highest annual salary.
 
-```{r, city barchart }
-# 'city' 
-us_data %>% 
-  count(city, sort=TRUE) %>% 
-  # mutate(percent = 100* n/sum(n)) %>% 
-  top_n(15) %>% 
-  ggplot(aes(x=fct_reorder(city,n, .desc=TRUE),y= n))+
-  geom_col(fill= "slateblue1")+
-  geom_text(aes(label=n),size=3,vjust=-0.25)+
-  theme_bw()+
-  labs(title="Frequencies of Cities",
-       y="Count", 
-       x="City")+
-   guides(fill=FALSE)+
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
-  NULL
-```
-> The cities most often mentioned are all large cities in the USA. Geographically, however, they are spread across the entire country.
-
-```{r, education level bar chart }
+```{r, education level bar chart, fig.width = 12}
 # education
 us_data %>% 
   filter(!is.na(education_level)) %>% 
@@ -404,7 +357,7 @@ skim(us_data$race_cleaned)
 ```
 
 
-```{r, plot the race frequencies }
+```{r, plot the race frequencies, fig.width = 12}
 # race
 us_data %>% 
   filter(!is.na(race_cleaned)) %>% 
@@ -423,7 +376,7 @@ us_data %>%
 
 > The vast majority of the respondents are white people. 
 
-```{r, barchart for proffesional experience years }
+```{r, barchart for proffesional experience years, fig.width = 12}
 
 # overall_years_of_professional_experience 
 us_data %>% 
@@ -438,9 +391,10 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
 ```
-> Years of professional experience is close to normal distribution. The largest propotion is people with 11-20years of experience.
 
-```{r, barchart for years of professional experience in particular field }
+> The largest propotion is people with 11-20years of experience.
+
+```{r, barchart for years of professional experience in particular field, fig.width = 12}
 # years_of_experience_in_field  
 us_data %>% 
   count(field_experience) %>% 
@@ -454,10 +408,11 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
 ```
+
 > Years of experience in particular field are more evenly distributed. 
 
 
-```{r, observe the frequencies of each gender}
+```{r, observe the frequencies of each gender, fig.width = 12}
 # gender
 us_data %>% 
   count(gender) %>% 
@@ -471,10 +426,11 @@ us_data %>%
        y="Count")+
   NULL
 ```
+
 > Survey respondents of America are mostly female.
 
 
-```{r,compare salaries for each gender}
+```{r,compare salaries for each gender, fig.width = 12}
 
 #create table
 us_data %>% 
@@ -491,9 +447,10 @@ us_data %>%
        title="Average Salary for Gender (US)")+
   theme_bw()
 ```
+
 > Average salary of man is higher than woman an non-binary respondents.
 
-```{r, facet wrap for women and men}
+```{r, facet wrap for women and men, fig.width = 12}
 
 us_data %>% 
   group_by(gender) %>% 
@@ -512,11 +469,11 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))+
   guides(fill=FALSE)
 ```
-> To futher investgate why salary of man is higher than woman, we make a graph of their industry. We filter induatries than have more than 500 respondents and surprising find that all man work in computing or tech industry.
 
+> To futher investgate why salary of man is higher than woman, we make a graph of their industry. We filter induatries than have more than 500 respondents and surprising find that all men work in computing or tech industry.
 
 - Observation 1: Mean salary men > Mean salary women
-- Observation 2: Computing &Tech is highest paid industry
+- Observation 2: Computing & Tech is highest paid industry
 - Observation 3: All male respondents work in Tech
 
 Following these observations,we want to compare whether the average annual salary for tech industry is difference between man and woman.
@@ -525,6 +482,7 @@ Following these observations,we want to compare whether the average annual salar
 Null Hypothesis $H_0$ : $\mu_{Men.tech.salary} - \mu_{Female.tech.salary} = 0$
 
 Alternative Hypothesis $H_1$ : $\mu_{Men.tech.salary} - \mu_{Female.tech.salary}\neq 0$
+
 ```{r, Salaries in Tech for each gender, height = 0.1}
 #compute confidence intervals
 
@@ -636,7 +594,7 @@ res1
 
 > 48% San Francisco vs. 16% in other US cities. Proportion of tech-employees in San Francisco is significantly higher than in other US cities as P-value < 2e-16. 
 
-```{r, race in tech}
+```{r, race in tech, fig.width = 12}
 #plot race in tech industry
 
 us_data %>% 
@@ -657,7 +615,7 @@ us_data %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
 ```
-```{r,race vs salary}
+```{r, race vs salary, fig.width = 12}
 us_data %>% 
   group_by(race_cleaned) %>% 
   filter (race_cleaned != "Others/Prefer not to say" ) %>% 
@@ -704,16 +662,13 @@ us_data_race <- us_data %>%
   filter(race_cleaned %in% c("White", "Asian or Asian American"))
 
 t.test(annual_salary ~ race_cleaned , data = us_data_race) 
-
-#SAY THAT ALL CIS OVERALL EXCEPT ASIANS VS EVERYONE ELSE
-
 ```
 
-> By comparing the confidence interval of annual income between each race, we see there is no overlap between Asian and other races. And t test between Asian and White has p-value <2e-16. Therefore we conclude annual salary of Asian is significantly higher than other races.
+> By comparing the confidence interval of annual income between each race, we see there is no overlap between Asian and other races. And t test between Asian and White has p-value <2e-16. Therefore, we conclude annual salary of Asian is significantly higher than other races.
 
 
 
-```{r}
+```{r, asian_american_proportion_cities}
 us_data %>% 
   group_by(city) %>% 
   filter(city %in% c("San Francisco", "Seattle","New York","Washington","New York City")) %>% 
@@ -765,7 +720,7 @@ res
 
 
 
-```{r,salary vs experience levels}
+```{r,salary vs experience levels, fig.width = 12}
 
 us_data %>%
   ggplot(aes(x = overall_experience, y = annual_salary, fill=overall_experience)) +
@@ -785,7 +740,7 @@ us_data %>%
 
 
 
-```{r, salary for different experience}
+```{r, salary for different experience, fig.width = 12}
 us_data %>%
   
   ggplot(aes(x = field_experience, y = annual_salary, fill=field_experience)) +
@@ -805,7 +760,7 @@ us_data %>%
 ```
 
 
-```{r, average salary vs age}
+```{r, average salary vs age, fig.width = 12}
 
 
 us_data %>%
@@ -826,7 +781,7 @@ us_data %>%
 ```
 
 
-```{r, education vs salary}
+```{r, education vs salary, fig.width = 12}
 
 us_data %>%
   ggplot(aes(x = education_level, y = annual_salary,fill=education_level)) +
@@ -849,7 +804,7 @@ us_data %>%
 
 We train a regression model to predict annual salary for respondents in US only. We take a look at the annual salary and the log of annual salary to decide our dependent variable (Y) - 
 
-```{r, distribution_of_salary_and_log_salary, fig.with = 12, fig.height=4}
+```{r, distribution_of_salary_and_log_salary, fig.width = 12, fig.height=4}
 library(patchwork) #Package to display plots side-by-side
 
 #Histogram for annual salary
